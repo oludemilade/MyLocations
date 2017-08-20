@@ -30,6 +30,14 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
     }
     
     @IBAction func getLocation() {
+        // Checks current authorization status. If not deremined ask and get
+        // Permissjon to check location when in use. 
+        let authStatus = CLLocationManager.authorizationStatus()
+        
+        if authStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+            return
+        }
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         locationManager.startUpdatingLocation()
