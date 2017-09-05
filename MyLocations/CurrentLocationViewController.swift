@@ -28,6 +28,7 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         updateLabels()
+        configureGetButton()
     }
 
     override func didReceiveMemoryWarning() {
@@ -50,9 +51,15 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
             return
         }
         
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.startUpdatingLocation()
+        if updatingLocation {
+            stopLocationManager()
+        } else {
+            location = nil
+            lastLocationError = nil
+            startLocationManager()
+        }
+        updateLabels()
+        configureGetButton()
     }
     
     func showLocationServicesDeniedAlert() {
@@ -72,15 +79,37 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
         
         lastLocationError = error
         stopLocationManager()
+        lastLocationError = nil
         updateLabels()
+        configureGetButton()
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let newLocation = locations.last!
         print("didUpdateLocations \(newLocation)")
+       
+        // If the time is less than 5 seconds since last update ignore update
+        if newLocation.timestamp.timeIntervalSinceNow < -5 {
+            return
+        }
         
-        location = newLocation
-        updateLabels()
+        // Use horizontal accuracy to determine overall accuracy. If less than zero ignore.
+        if newLocation.horizontalAccuracy < 0 {
+            return
+        }
+        
+        if location == nil || location!.horizontalAccuracy > newLocation.horizontalAccuracy {
+            lastLocationError = nil
+            location = newLocation
+            updateLabels()
+            
+            // Check that the new location is more accurate than the last.
+            if newLocation.horizontalAccuracy <= locationManager.desiredAccuracy {
+                print( "*** We are Done!" )
+                stopLocationManager()
+                configureGetButton()
+            }
+        }
     }
     
     func updateLabels() {
@@ -132,6 +161,14 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
             locationManager.stopUpdatingLocation()
             locationManager.delegate = nil
             updatingLocation = false
+        }
+    }
+    
+    func configureGetButton() {
+        if updatingLocation {
+            getButton.setTitle("Stop", for: .normal)
+        } else {
+           getButton.setTitle("Get My Location", for: .normal)
         }
     }
 }
